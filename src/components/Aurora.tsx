@@ -156,30 +156,17 @@ export default function Aurora(props: AuroraProps) {
     const gl = renderer.gl;
     gl.clearColor(1, 1, 1, 1);
 
-    let program: Program;
-
-    function resize() {
-      if (!ctn) return;
-      const width = ctn.offsetWidth;
-      const height = ctn.offsetHeight;
-      renderer.setSize(width, height);
-      if (program) {
-        program.uniforms.uResolution.value = [width, height];
-      }
-    }
-    window.addEventListener("resize", resize);
+    const colorStopsArray = colorStops.map((hex) => {
+      const c = new Color(hex);
+      return [c.r, c.g, c.b] as [number, number, number];
+    });
 
     const geometry = new Triangle(gl);
     if (geometry.attributes.uv) {
       delete geometry.attributes.uv;
     }
 
-    const colorStopsArray = colorStops.map((hex) => {
-      const c = new Color(hex);
-      return [c.r, c.g, c.b] as [number, number, number];
-    });
-
-    program = new Program(gl, {
+    const program = new Program(gl, {
       vertex: VERT,
       fragment: FRAG,
       uniforms: {
@@ -190,6 +177,16 @@ export default function Aurora(props: AuroraProps) {
       },
     });
 
+    const resize = () => {
+      if (!ctn) return;
+      const width = ctn.offsetWidth;
+      const height = ctn.offsetHeight;
+      renderer.setSize(width, height);
+      program.uniforms.uResolution.value = [width, height];
+    };
+
+    window.addEventListener("resize", resize);
+    
     const mesh = new Mesh(gl, { geometry, program });
     ctn.appendChild(gl.canvas);
 
