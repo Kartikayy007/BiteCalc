@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Food Calorie AI",
+  title: "BiteCalc",
   description: "Analyze food images to get calorie estimates",
 };
 
