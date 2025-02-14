@@ -348,7 +348,7 @@ Example: "Grilled Salmon with Quinoa|450|0.95|38,35,22,6|Fresh salmon fillet (6 
       </div>
 
       <div className="relative z-10 p-4 space-y-8">
-        <h1 className="text-8xl md:text-9xl text-center font-bold tracking-tight mx-auto">
+        <h1 className="text-7xl md:text-8xl text-center font-bold tracking-tight mx-auto">
           BiteCalc
         </h1>
 
