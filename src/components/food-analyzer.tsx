@@ -32,10 +32,8 @@ interface UserProfile {
   dailyCalorieGoal?: number;
 }
 
-// Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY || "");
 
-// Generation config
 const generationConfig = {
   temperature: 0.7,
   topP: 0.8,
@@ -58,11 +56,8 @@ export function FoodAnalyzer() {
   const [model, setModel] = useState<any>(null);
   const [isCameraAvailable, setIsCameraAvailable] = useState(false);
 
-  // Calculate BMR and daily calorie needs
   const calculateDailyCalories = (weight: number, height: number) => {
-    // Basic BMR calculation (Mifflin-St Jeor Equation)
     const bmr = 10 * weight + 6.25 * height - 5;
-    // Assuming moderate activity level (1.55 multiplier)
     return Math.round(bmr * 1.55);
   };
 
@@ -74,15 +69,14 @@ export function FoodAnalyzer() {
     setUserProfile(newProfile);
   };
 
-  // Check if camera is available
   useState(() => {
     navigator.mediaDevices?.getUserMedia({ video: true })
       .then(() => setIsCameraAvailable(true))
       .catch(() => setIsCameraAvailable(false));
   });
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (file) {
       processImageFile(file);
     }
