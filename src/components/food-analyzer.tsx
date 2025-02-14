@@ -7,7 +7,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Loader2, Camera, Upload, Sparkles, Scale, Ruler } from "lucide-react";
 import Image from "next/image";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI, GenerativeModel } from "@google/generative-ai";
 import { Progress } from "./ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -53,7 +53,7 @@ export function FoodAnalyzer() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [model, setModel] = useState<any>(null);
+  const [model, setModel] = useState<GenerativeModel | null>(null);
   const [isCameraAvailable, setIsCameraAvailable] = useState(false);
 
   const calculateDailyCalories = (weight: number, height: number) => {
@@ -100,15 +100,11 @@ export function FoodAnalyzer() {
 
     setIsClarifying(true);
     try {
-      const result = await model.generateContent({
-        contents: [{
-          role: "user",
-          parts: [{ text: `Based on the clarification that this is "${clarification}", please provide an updated analysis in the format: name|calories|confidence|details` }]
-        }]
-      });
+      const result = await model.generateContent(
+        `Based on the clarification that this is "${clarification}", please provide an updated analysis in the format: name|calories|confidence|details`
+      );
 
-      const response = await result.response;
-      const text = response.text().trim();
+      const text = result.response.text();
       console.log("Clarification Response:", text);
 
       const [foodName, calories, confidence, details] = text.split("|").map((item: string) => item.trim());
@@ -120,9 +116,10 @@ export function FoodAnalyzer() {
         details: details || undefined,
         needsClarification: false
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error during clarification:", error);
-      setError(error?.message || "Failed to process clarification. Please try again.");
+      const errorMessage = error instanceof Error ? error.message : "Failed to process clarification. Please try again.";
+      setError(errorMessage);
     } finally {
       setIsClarifying(false);
       setClarification("");
@@ -172,23 +169,18 @@ Format your response exactly as: name|calories|confidence|protein,carbs,fats,fib
 
 Example: "Grilled Salmon with Quinoa|450|0.95|38,35,22,6|Fresh salmon fillet (6 oz) with 1 cup quinoa and roasted vegetables. Rich in omega-3 fatty acids, protein, and fiber.|Great choice for muscle recovery and brain health! Try adding more leafy greens for extra nutrients."`;
 
-      const result = await modelInstance.generateContent({
-        contents: [{
-          role: "user",
-          parts: [
-            {
-              inlineData: {
-                mimeType: imageFile.type,
-                data: imageBase64
-              }
-            },
-            { text: prompt }
-          ]
-        }]
-      });
+      const result = await modelInstance.generateContent([
+        {
+          inlineData: {
+            mimeType: imageFile.type,
+            data: imageBase64
+          }
+        },
+        { text: prompt }
+      ]);
 
       const response = await result.response;
-      const text = response.text().trim();
+      const text = response.text();
       console.log("Gemini Response:", text);
 
       const [foodName, calories, confidence, nutrition, details, tips] = text.split("|").map((item: string) => item.trim());
@@ -209,9 +201,10 @@ Example: "Grilled Salmon with Quinoa|450|0.95|38,35,22,6|Fresh salmon fillet (6 
         recommendations: tips.split(". "),
         needsClarification: confidenceValue < 0.3
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error analyzing image:", error);
-      setError(error?.message || "Failed to analyze the image. Please try again.");
+      const errorMessage = error instanceof Error ? error.message : "Failed to analyze the image. Please try again.";
+      setError(errorMessage);
     } finally {
       setIsAnalyzing(false);
     }
@@ -420,110 +413,109 @@ Example: "Grilled Salmon with Quinoa|450|0.95|38,35,22,6|Fresh salmon fillet (6 
                       </div>
                       {userProfile.dailyCalorieGoal && (
                         <Progress 
-                          value={(result.calories / userProfile.dailyCalorieGoal) * 100} 
-                          className="mt-2"
-                        />
-                      )}
-                    </div>
-
-                    <div>
-                      <Label>Confidence</Label>
-                      <div className="flex items-center gap-2">
-                        <Progress 
-                          value={result.confidence * 100}
-                          className={
-                            result.confidence < 0.3 
-                              ? "text-yellow-500" 
-                              : result.confidence < 0.7 
-                                ? "text-blue-500" 
-                                : "text-green-500"
-                          }
-                        />
-                        <span className="text-sm font-medium">
-                          {Math.round(result.confidence * 100)}%
-                        </span>
+                          value={(result.calories / userProfile.dailyCalorieGoal) * 100}className="mt-2"
+                          />
+                        )}
+                      </div>
+  
+                      <div>
+                        <Label>Confidence</Label>
+                        <div className="flex items-center gap-2">
+                          <Progress 
+                            value={result.confidence * 100}
+                            className={
+                              result.confidence < 0.3 
+                                ? "text-yellow-500" 
+                                : result.confidence < 0.7 
+                                  ? "text-blue-500" 
+                                  : "text-green-500"
+                            }
+                          />
+                          <span className="text-sm font-medium">
+                            {Math.round(result.confidence * 100)}%
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-
-                  {result.nutritionalInfo && (
-                    <div className="space-y-4">
-                      <Label>Nutritional Breakdown</Label>
-                      <div className="grid gap-2">
-                        {Object.entries(result.nutritionalInfo).map(([nutrient, value]) => (
-                          <div key={nutrient} className="space-y-1">
-                            <div className="flex justify-between text-sm">
-                              <span className="capitalize">{nutrient}</span>
-                              <span>{value}g</span>
+  
+                    {result.nutritionalInfo && (
+                      <div className="space-y-4">
+                        <Label>Nutritional Breakdown</Label>
+                        <div className="grid gap-2">
+                          {Object.entries(result.nutritionalInfo).map(([nutrient, value]) => (
+                            <div key={nutrient} className="space-y-1">
+                              <div className="flex justify-between text-sm">
+                                <span className="capitalize">{nutrient}</span>
+                                <span>{value}g</span>
+                              </div>
+                              <Progress value={(value / 100) * 100} />
                             </div>
-                            <Progress value={(value / 100) * 100} />
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
+                    )}
+                  </div>
+  
+                  {result.details && (
+                    <div className="mt-6">
+                      <Label>Details</Label>
+                      <p className="text-muted-foreground mt-1">{result.details}</p>
+                    </div>
+                  )}
+  
+                  {result.recommendations && (
+                    <div className="mt-6">
+                      <Label>Recommendations</Label>
+                      <ul className="mt-2 space-y-2">
+                        {result.recommendations.map((tip, index) => (
+                          <motion.li
+                            key={index}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.1 }}
+                            className="flex items-start gap-2"
+                          >
+                            <span className="text-green-500">•</span>
+                            <span className="text-muted-foreground">{tip}</span>
+                          </motion.li>
+                        ))}
+                      </ul>
                     </div>
                   )}
                 </div>
-
-                {result.details && (
-                  <div className="mt-6">
-                    <Label>Details</Label>
-                    <p className="text-muted-foreground mt-1">{result.details}</p>
-                  </div>
-                )}
-
-                {result.recommendations && (
-                  <div className="mt-6">
-                    <Label>Recommendations</Label>
-                    <ul className="mt-2 space-y-2">
-                      {result.recommendations.map((tip, index) => (
-                        <motion.li
-                          key={index}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: index * 0.1 }}
-                          className="flex items-start gap-2"
-                        >
-                          <span className="text-green-500">•</span>
-                          <span className="text-muted-foreground">{tip}</span>
-                        </motion.li>
-                      ))}
-                    </ul>
-                  </div>
+  
+                {result.needsClarification && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-6"
+                  >
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Clarify what this food is..."
+                        value={clarification}
+                        onChange={(e) => setClarification(e.target.value)}
+                      />
+                      <Button 
+                        onClick={handleClarification}
+                        disabled={!clarification || isClarifying}
+                      >
+                        {isClarifying ? (
+                          <>
+                            Updating...
+                            <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                          </>
+                        ) : (
+                          "Update Analysis"
+                        )}
+                      </Button>
+                    </div>
+                  </motion.div>
                 )}
               </div>
-
-              {result.needsClarification && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mt-6"
-                >
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Clarify what this food is..."
-                      value={clarification}
-                      onChange={(e) => setClarification(e.target.value)}
-                    />
-                    <Button 
-                      onClick={handleClarification}
-                      disabled={!clarification || isClarifying}
-                    >
-                      {isClarifying ? (
-                        <>
-                          Updating...
-                          <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-                        </>
-                      ) : (
-                        "Update Analysis"
-                      )}
-                    </Button>
-                  </div>
-                </motion.div>
-              )}
-            </div>
-          </Card>
-        </motion.div>
-      )}
-    </div>
-  );
-} 
+            </Card>
+          </motion.div>
+        )}
+      </div>
+    );
+  }
