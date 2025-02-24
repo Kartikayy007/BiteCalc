@@ -10,7 +10,6 @@ import Image from "next/image";
 import { GoogleGenerativeAI, GenerativeModel } from "@google/generative-ai";
 import { Progress } from "./ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
-import Aurora from "./Aurora";
 
 interface AnalysisResult {
   foodName: string;
@@ -341,10 +340,6 @@ Example: "Grilled Salmon with Quinoa|450|0.95|38,35,22,6|Fresh salmon fillet (6 
   return (
     <div className="relative min-h-screen">
       <div className="fixed inset-0 z-0">
-        <Aurora
-          speed={0.5}
-          amplitude={0.8}
-        />
       </div>
 
       <div className="relative z-10 p-4 space-y-8">
